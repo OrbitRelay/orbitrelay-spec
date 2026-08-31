@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Validate UTF-8 and JSON fixtures
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          for path in Path('.').rglob('*'):
+              if not path.is_file() or '.git' in path.parts:
+                  continue
+              data = path.read_bytes()
+              if data.startswith(b'\xef\xbb\xbf'):
+                  raise SystemExit(f'UTF-8 BOM is not allowed: {path}')
+              if path.suffix in {'.md', '.json', '.yml', '.yaml'}:
+                  data.decode('utf-8')
+              if path.suffix == '.json':
+                  json.loads(data)
+          PY
